@@ -16,8 +16,8 @@ import TagsProvider from "@/providers/TagsProvider";
 import AuthorsProvider from "@/providers/AuthorsProvider";
 
 export const metadata: Metadata = {
-  title: "Objectif-Dev.Blog",
-  description: "Blog de développement couvrant divers sujets techniques et retours d'expérience.",
+  title: "Objectif Dev Blog",
+  description: "Découvrez des articles et conseils pratiques sur le développement web, partagés par un développeur passionné. Suivez mon parcours et mes expériences !",
 };
 
 interface RootLayoutProps {
@@ -31,10 +31,19 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="fr">
       <Head>
+        <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="icon" href="/favicon.ico" /> 
+        {/* Open Graph Meta Tags */}
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://objectifdev.fr" />
+        <meta property="og:image" content="https://objectifdev.fr/assets/logo.png" />
+        {/* Canonical Link */}
+        <link rel="canonical" href="https://objectifdev.fr" />
       </Head>
       <body>
         <div id="__next">
