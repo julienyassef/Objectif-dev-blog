@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
           </a>
         </div>
         <div className="flex items-center">
-          <Image src="/assets/logoPortfolioJY.png" alt="Logo" width={30} height={30} className="mr-3" />
+          <Image src="/assets/logoNav/logoPortfolioJY.png" alt="Logo" width={30} height={30} className="mr-3" />
           <p className="hover:text-primary text-center md:text-right">
             Développé par <Link href="https://julienyassef.fr/">Julien Yassef</Link>
           </p>
@@ -46,5 +46,4 @@ const Footer: React.FC = () => {
     </footer>
   );
 };
-
 export default Footer;
