@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+    font-family: 'Merriweather', serif;
+  }
+  
+/* Animation pour la modal SignIn si connection échoué */
+
+  @keyframes shake {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-10px); }
+    50% { transform: translateY(10px); }
+    75% { transform: translateY(-10px); }
+  }
+  
+  .shake {
+    animation: shake 0.5s;
+  }
+  
+ /* Animation pour le loader */
+
+  .slow-spin {
+    animation: spin 5s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }

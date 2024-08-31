@@ -1,0 +1,23 @@
+
+networks:
+  nginxProxyNetwork:
+    driver: bridge
+    external: true
+
+services:
+  objectifdev:
+    container_name: objectifdev
+    restart: always
+    build: .
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    networks:
+      - nginxProxyNetwork
+    volumes:
+      - /var/www/uploads:/app/public/uploads
+    env_file:
+      - .env      
+      - .env.local 
+
