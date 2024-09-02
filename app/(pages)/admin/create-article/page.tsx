@@ -84,8 +84,6 @@ const CreateArticle: React.FC = () => {
       }
     });
 
-    console.log('FormData before submission:', Array.from(formData.entries()));
-
     try {
       
       const response = await createArticle(formData);

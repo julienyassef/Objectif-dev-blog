@@ -114,6 +114,13 @@ const ArticlePage = ({ params }: ArticlePageProps) => {
             <div className="flex flex-col lg:flex-row">
               <article className="lg:w-2/3 w-full">
                 <ArticlePageComponent article={article} />
+                <div className="flex items-center justify-between text-secondaire font-bold text-sm pl-6 pr-6 pt-4 pb-4 mb-4">
+                  <p>Par {article.author} | Publié le {new Date(article.createdAt).toLocaleDateString()}</p>
+                  <div className="flex items-center space-x-4">
+                    <LikeButton slug={article.slug} />
+                    <ShareButton slug={article.slug} title={article.title} />
+                  </div>
+                </div>
               </article>
               <aside className="lg:w-1/3 w-full pr-6 mt-8 lg:mt-0 lg:ml-8">
                 <h3 className="text-2xl text-center font-semibold mt-4 mb-4">Parcourez d&apos;autres articles</h3>
