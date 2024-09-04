@@ -23,7 +23,7 @@ const toPlainObject = (doc: any) => {
 };
 
 export const createArticle = async (formData: FormData) => {
-  console.log("Connecting to database...");
+  // console.log("Connecting to database...");
   await dbConnect();
   try {
     // Extraction des données du formulaire
@@ -32,21 +32,21 @@ export const createArticle = async (formData: FormData) => {
     const author = formData.get('author') as string;
     const tags = (formData.get('tags') as string)?.split(',').map(tag => tag.trim());
 
-    console.log("Title:", title);
-    console.log("Slug:", slug);
-    console.log("Author:", author);
-    console.log("Tags:", tags);
+    // console.log("Title:", title);
+    // console.log("Slug:", slug);
+    // console.log("Author:", author);
+    // console.log("Tags:", tags);
 
     // Initialisation du tableau de contenu
     const content: ContentElement[] = [];
 
-    console.log("Processing form data...");
+    // console.log("Processing form data...");
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('file-')) {  // Si le champ du formulaire est un fichier
         const file = value as File;
         const buffer = Buffer.from(await file.arrayBuffer());
         try {
-          console.log("Processing file:", file.name, "of type:", file.type);
+          // console.log("Processing file:", file.name, "of type:", file.type);
           const compressedFile = await compressFile(buffer, file.type);
           const fileUrl = await uploadFileToStorage(compressedFile, file.name, file.type);
 
@@ -59,9 +59,9 @@ export const createArticle = async (formData: FormData) => {
           // Ajout du fichier compressé et téléchargé au contenu
           const fileType = file.type.startsWith('video/') ? 'vidéo' : 'photo';
           content.push({ type: fileType, value: fileUrl });
-          console.log("File processed and uploaded:", fileUrl);
+          // console.log("File processed and uploaded:", fileUrl);
         } catch (error) {
-          console.error('Error processing file:', file.name, error);
+          // console.error('Error processing file:', file.name, error);
           throw error;
         }
       } else if (key.startsWith('content-')) {  // Si le champ du formulaire est un contenu texte
@@ -73,7 +73,7 @@ export const createArticle = async (formData: FormData) => {
       }
     }
 
-    console.log("Final content array:", content);
+    // console.log("Final content array:", content);
 
     // Vérification de l'existence d'un article avec le même slug
     const existingArticle = await ArticleModel.findOne({ slug });
@@ -97,7 +97,7 @@ export const createArticle = async (formData: FormData) => {
     const savedArticle = await newArticle.save();
     const plainArticle = toPlainObject(savedArticle.toObject());
 
-    console.log('Article successfully created:', plainArticle);
+    // console.log('Article successfully created:', plainArticle);
 
     return { success: true, article: plainArticle };
 
@@ -134,12 +134,34 @@ export const getArticle = async (slug: string) => {
   }
 };
 
-export const toggleLike = async (slug: string, like: boolean) => {
+
+export const toggleLike = async (slug: string, like: boolean, req: Request) => {
   await dbConnect();
+
+  // Extraction de l'adresse IP de la requête
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0] : req.headers.get('remoteAddress') || ''; 
+
+  // Assurez-vous de bien récupérer l'adresse IP correcte si elle est sous forme de tableau
+  const userIp = Array.isArray(ip) ? ip[0] : ip;
+
   try {
     const article = await ArticleModel.findOne({ slug });
     if (article) {
-      article.likes = like ? (article.likes || 0) + 1 : Math.max(0, (article.likes || 0) - 1);
+      const alreadyLiked = article.likedBy.includes(userIp); // Utilisation de l'IP récupérée
+
+      if (like && !alreadyLiked) {
+        // Ajouter un like et enregistrer l'adresse IP
+        article.likes = (article.likes || 0) + 1;
+        article.likedBy.push(userIp);
+      } else if (!like && alreadyLiked) {
+        // Retirer un like et supprimer l'adresse IP
+        article.likes = Math.max(0, (article.likes || 0) - 1);
+        article.likedBy = article.likedBy.filter(existingIp => existingIp !== userIp);
+      } else {
+        return { success: false, error: 'Invalid action' };
+      }
+
       await article.save();
       return { success: true, likes: article.likes };
     } else {
@@ -150,6 +172,9 @@ export const toggleLike = async (slug: string, like: boolean) => {
     return { success: false, error: 'Failed to toggle like' };
   }
 };
+
+
+
 
 export const incrementViews = async (slug: string) => {
   await dbConnect();

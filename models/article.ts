@@ -14,6 +14,7 @@ export interface Article {
   author: string;
   tags: string[];
   likes: number;
+  likedBy: string[];
 }
 
 const ContentElementSchema = new Schema({
@@ -30,6 +31,7 @@ const ArticleSchema = new Schema<Article>({
   author: { type: String, required: true },
   tags: [{ type: String, required: true }],
   likes: { type: Number, default: 0 },
+  likedBy: [{ type: String }],
 });
 
 const Article: Model<Article> = mongoose.models.Article || mongoose.model<Article>('Article', ArticleSchema);
