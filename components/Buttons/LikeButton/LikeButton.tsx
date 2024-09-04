@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
 import { HeartIcon } from '@heroicons/react/24/solid';
 import useArticles from '@/hooks/useArticles';
@@ -16,7 +14,8 @@ const LikeButton: React.FC<LikeButtonProps> = ({ slug }) => {
 
   useEffect(() => {
     if (article) {
-      setLiked(article.likes > 0);
+      const userId = document.cookie.split('; ').find(row => row.startsWith('userId='));
+      setLiked(article.likesByUserId?.includes(userId?.split('=')[1] || '') || false);
     }
   }, [slug, article]);
 
@@ -24,18 +23,16 @@ const LikeButton: React.FC<LikeButtonProps> = ({ slug }) => {
     setLiked(!liked);
     await toggleLike(slug, !liked);
   };
-  
 
   return (
     <button
-    onClick={handleLike}
-    className={`flex items-center font-black ${
+      onClick={handleLike}
+      className={`flex items-center font-black ${
         liked ? 'text-primary hover:text-gray-400' : 'text-gray-400 hover:text-primary'
-    } transition-colors duration-300`}
+      } transition-colors duration-300`}
     >
-        <HeartIcon className="w-6 h-6" />
+      <HeartIcon className="w-6 h-6" />
     </button>
-
   );
 };
 

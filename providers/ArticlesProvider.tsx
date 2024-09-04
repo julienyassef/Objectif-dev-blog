@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useState, useEffect, createContext, useTransition } from "react";
+import { v4 as uuidv4 } from 'uuid';
 import { Article } from "@/models/article";
 import { getAllArticles, toggleLike, incrementViews, createArticle, getArticle as getArticleAPI, deleteArticle } from '@/actions/articles';
 import Loader from "@/app/loader";
@@ -48,8 +49,22 @@ const ArticlesProvider = ({ children }: { children: ReactNode }) => {
     setArticles(fetchedArticles);
   };
 
+   // Fonction pour obtenir ou créer un identifiant unique et le stocker dans un cookie
+   const getOrCreateUserId = () => {
+    let userId = document.cookie.split('; ').find(row => row.startsWith('userId='));
+    if (userId) {
+      userId = userId.split('=')[1];
+    } else {
+      userId = uuidv4(); // Génère un nouvel UUID
+      document.cookie = `userId=${userId}; path=/; max-age=31536000`; // Stocker dans un cookie pour 1 an
+    }
+    return userId;
+  };
+
+  
   const handleToggleLike = async (slug: string, like: boolean) => {
-    const response = await toggleLike(slug, like);
+    const userId = getOrCreateUserId(); 
+    const response = await toggleLike(slug, userId, like);
     if (response.success) {
       setArticles((prevArticles) =>
         prevArticles?.map((article) =>
@@ -59,7 +74,6 @@ const ArticlesProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-
   const handleIncrementViews = async (slug: string) => {
     const response = await incrementViews(slug);
     if (response.success) {

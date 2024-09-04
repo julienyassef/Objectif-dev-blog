@@ -14,7 +14,7 @@ export interface Article {
   author: string;
   tags: string[];
   likes: number;
-  likesByIp: string[];
+  likesByUserId: string[]; 
 }
 
 const ContentElementSchema = new Schema({
@@ -31,7 +31,7 @@ const ArticleSchema = new Schema<Article>({
   author: { type: String, required: true },
   tags: [{ type: String, required: true }],
   likes: { type: Number, default: 0 },
-  likesByIp: {
+  likesByUserId: {
     type: [String],
     default: [],
   },

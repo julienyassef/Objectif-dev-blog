@@ -2,7 +2,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import { headers } from 'next/headers'; 
 import dbConnect from '@/utils/dbConnect';
 import ArticleModel from '@/models/article';
 import { compressFile, uploadFileToStorage } from '@/utils/fileHandlers';
@@ -22,13 +21,6 @@ const toPlainObject = (doc: any) => {
   }
   return plainObj;
 };
-
-function getIpFromHeaders(): string {
-  const headersList = headers();
-  const forwarded = headersList.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0] : 'unknown';
-  return ip;
-}
 
 export const createArticle = async (formData: FormData) => {
   // console.log("Connecting to database...");
@@ -143,44 +135,25 @@ export const getArticle = async (slug: string) => {
   }
 };
 
-export const toggleLike = async (slug: string, like: boolean) => {
+export const toggleLike = async (slug: string, userId: string, like: boolean) => {
   await dbConnect();
-
-  // Obtenir l'adresse IP de l'utilisateur
-  const ipAddress = getIpFromHeaders();
-  console.log('IP Address:', ipAddress);  // Afficher l'adresse IP récupérée
 
   try {
     const article = await ArticleModel.findOne({ slug });
-    
     if (article) {
-      console.log('Article found:', article.slug);  // Confirmer que l'article a été trouvé
-      console.log('Current likes:', article.likes);  // Afficher le nombre actuel de likes
-      console.log('Current likesByIp:', article.likesByIp);  // Afficher les adresses IP actuelles qui ont liké
-
-      const alreadyLiked = article.likesByIp.includes(ipAddress);
-      console.log('Already liked by this IP:', alreadyLiked);  // Indiquer si l'IP a déjà liké l'article
+      const alreadyLiked = article.likesByUserId.includes(userId);
 
       if (like && !alreadyLiked) {
-        console.log('Adding like from IP:', ipAddress);
         article.likes = (article.likes || 0) + 1;
-        article.likesByIp.push(ipAddress);
+        article.likesByUserId.push(userId);
       } else if (!like && alreadyLiked) {
-        console.log('Removing like from IP:', ipAddress);
         article.likes = Math.max(0, (article.likes || 0) - 1);
-        article.likesByIp = article.likesByIp.filter(ip => ip !== ipAddress);
-      } else {
-        console.log('No action needed.');
+        article.likesByUserId = article.likesByUserId.filter(id => id !== userId);
       }
 
-      console.log('Updated likes:', article.likes);  // Afficher le nombre de likes mis à jour
-      console.log('Updated likesByIp:', article.likesByIp);  // Afficher les adresses IP mises à jour
-
       await article.save();
-      console.log('Article saved successfully.');
       return { success: true, likes: article.likes };
     } else {
-      console.error('Article not found with slug:', slug);  // Indiquer que l'article n'a pas été trouvé
       return { success: false, error: 'Article not found' };
     }
   } catch (error) {
@@ -188,9 +161,6 @@ export const toggleLike = async (slug: string, like: boolean) => {
     return { success: false, error: 'Failed to toggle like' };
   }
 };
-
-
-
 
 
 export const incrementViews = async (slug: string) => {
