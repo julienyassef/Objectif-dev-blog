@@ -68,7 +68,7 @@ const ArticlesProvider = ({ children }: { children: ReactNode }) => {
     if (response.success) {
       setArticles((prevArticles) =>
         prevArticles?.map((article) =>
-          article.slug === slug ? { ...article, likes: response.likes ?? 0 } : article
+          article.slug === slug ? { ...article, likes: response.likes ?? 0, likesByUserId: like ? [...article.likesByUserId, userId] : article.likesByUserId.filter(id => id !== userId) } : article
         ) || null
       );
     }
