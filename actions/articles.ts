@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { headers } from 'next/headers'; 
 import dbConnect from '@/utils/dbConnect';
 import ArticleModel from '@/models/article';
 import { compressFile, uploadFileToStorage } from '@/utils/fileHandlers';
@@ -21,6 +22,13 @@ const toPlainObject = (doc: any) => {
   }
   return plainObj;
 };
+
+function getIpFromHeaders(): string {
+  const headersList = headers();
+  const forwarded = headersList.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0] : 'unknown';
+  return ip;
+}
 
 export const createArticle = async (formData: FormData) => {
   // console.log("Connecting to database...");
@@ -91,6 +99,7 @@ export const createArticle = async (formData: FormData) => {
       content,
       views: 0,
       likes: 0,
+      likesByIp: [],
     });
 
     // Sauvegarde du nouvel article dans la base de données
@@ -134,32 +143,23 @@ export const getArticle = async (slug: string) => {
   }
 };
 
-
-export const toggleLike = async (slug: string, like: boolean, req: Request) => {
+export const toggleLike = async (slug: string, like: boolean) => {
   await dbConnect();
 
-  // Extraction de l'adresse IP de la requête
-  const forwarded = req.headers.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0] : req.headers.get('remoteAddress') || ''; 
-
-  // Assurez-vous de bien récupérer l'adresse IP correcte si elle est sous forme de tableau
-  const userIp = Array.isArray(ip) ? ip[0] : ip;
+  // Obtenir l'adresse IP de l'utilisateur
+  const ipAddress = getIpFromHeaders();
 
   try {
     const article = await ArticleModel.findOne({ slug });
     if (article) {
-      const alreadyLiked = article.likedBy.includes(userIp); // Utilisation de l'IP récupérée
+      const alreadyLiked = article.likesByIp.includes(ipAddress);
 
       if (like && !alreadyLiked) {
-        // Ajouter un like et enregistrer l'adresse IP
         article.likes = (article.likes || 0) + 1;
-        article.likedBy.push(userIp);
+        article.likesByIp.push(ipAddress);
       } else if (!like && alreadyLiked) {
-        // Retirer un like et supprimer l'adresse IP
         article.likes = Math.max(0, (article.likes || 0) - 1);
-        article.likedBy = article.likedBy.filter(existingIp => existingIp !== userIp);
-      } else {
-        return { success: false, error: 'Invalid action' };
+        article.likesByIp = article.likesByIp.filter(ip => ip !== ipAddress);
       }
 
       await article.save();
@@ -172,8 +172,6 @@ export const toggleLike = async (slug: string, like: boolean, req: Request) => {
     return { success: false, error: 'Failed to toggle like' };
   }
 };
-
-
 
 
 export const incrementViews = async (slug: string) => {

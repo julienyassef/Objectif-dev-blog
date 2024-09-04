@@ -9,13 +9,12 @@ type ArticlesContextType = {
   setArticles: (articles: Article[]) => void;
   articles: Article[] | null;
   isPending: boolean;
-  toggleLike: (slug: string, like: boolean, req: Request) => Promise<void>;
+  toggleLike: (slug: string, like: boolean) => Promise<void>;
   incrementViews: (slug: string) => Promise<void>;
   createArticle: (formData: FormData) => Promise<{ success: boolean; article?: Article; error?: string }>;
   getArticle: (slug: string) => Promise<{ success: boolean; article?: Article; error?: string }>;
   deleteArticle: (slug: string) => Promise<{ success: boolean; error?: string }>;
 };
-
 
 export const ArticlesContext = createContext<ArticlesContextType>({
   setArticles: () => {
@@ -49,20 +48,16 @@ const ArticlesProvider = ({ children }: { children: ReactNode }) => {
     setArticles(fetchedArticles);
   };
 
-  // /providers/ArticlesProvider.tsx
-
-const handleToggleLike = async (slug: string, like: boolean, req: Request) => {
-  const response = await toggleLike(slug, like, req); 
-  if (response.success) {
-    setArticles((prevArticles) =>
-      prevArticles?.map((article) =>
-        article.slug === slug ? { ...article, likes: response.likes ?? 0 } : article
-      ) || null
-    );
-  }
-};
-
-  
+  const handleToggleLike = async (slug: string, like: boolean) => {
+    const response = await toggleLike(slug, like);
+    if (response.success) {
+      setArticles((prevArticles) =>
+        prevArticles?.map((article) =>
+          article.slug === slug ? { ...article, likes: response.likes ?? 0 } : article
+        ) || null
+      );
+    }
+  };
   
 
   const handleIncrementViews = async (slug: string) => {
