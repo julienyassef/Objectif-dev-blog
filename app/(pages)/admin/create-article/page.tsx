@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal/ModalAddZone';
@@ -8,7 +8,7 @@ import AuthorSelect from '@/components/AuthorSelect/AuthorSelect';
 import TagInput from '@/components/TagInput/TagInput';
 import useArticles from '@/hooks/useArticles';
 
-// Importez dynamiquement des composants pour garantir qu'ils ne sont utilisés que côté client
+// Importation dynamique des composants pour utilisation côté client uniquement
 const TextZone = dynamic(() => import('@/components/ContentZones/TextZone'), { ssr: false });
 const VideoZone = dynamic(() => import('@/components/ContentZones/VideoZone'), { ssr: false });
 const PhotoZone = dynamic(() => import('@/components/ContentZones/PhotoZone'), { ssr: false });
@@ -19,6 +19,7 @@ interface ContentElement {
   id: number;
   type: 'text' | 'vidéo' | 'photo' | 'link' | 'h2';
   value?: string | File;
+  order: number;  // Champ order ajouté pour garantir l'ordre de création
 }
 
 const CreateArticle: React.FC = () => {
@@ -26,83 +27,96 @@ const CreateArticle: React.FC = () => {
   const [slug, setSlug] = useState<string>('');
   const [author, setAuthor] = useState<string>('');
   const [tags, setTags] = useState<string[]>([]);
-  const [content, setContent] = useState<ContentElement[]>([{ type: 'photo', id: Date.now() }]);
+  const [content, setContent] = useState<ContentElement[]>([{ type: 'photo', id: Date.now(), order: 0 }]); // Contient déjà un élément photo par défaut
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const router = useRouter();
   const { createArticle } = useArticles();
 
+  // Sauvegarde des éléments dans l'ordre
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleSave triggered');
   
     const hasText = content.some(element => element.type === 'text' && element.value);
     const coverPhoto = content[0]?.type === 'photo' && content[0].value;
+
+    // console.log('Contenu à envoyer:', content);
   
     if (!title || !slug) {
       setError('Le titre et le slug sont obligatoires.');
-      console.error('Le titre et le slug sont obligatoires.');
       return;
     }
   
     if (!coverPhoto) {
       setError('Une photo de couverture est requise.');
-      console.error('Une photo de couverture est requise.');
       return;
     }
   
     if (!hasText) {
       setError('Une zone de texte est requise.');
-      console.error('Une zone de texte est requise.');
       return;
     }
-      
+  
     if (!author) {
       setError('Un auteur est requis.');
-      console.error('Un auteur est requis.');
       return;
     }
   
     if (tags.length === 0) {
       setError('Au moins un tag est requis.');
-      console.error('Au moins un tag est requis.');
       return;
     }
   
+   
+    content.forEach((element, index) => {
+      if (element.order === undefined) {
+        console.warn(`L'élément avec l'id ${element.id} n'a pas de champ 'order'. Ajout d'un ordre par défaut.`);
+        element.order = index; 
+      }
+    });
+  
+
+  
+    // Ajout du contenu dans FormData, en maintenant l'ordre des éléments
     const formData = new FormData();
     formData.append('title', title);
     formData.append('slug', slug);
     formData.append('author', author);
-    formData.append('tags', tags.join(',')); 
+    formData.append('tags', tags.join(','));
+  
     content.forEach((element, index) => {
+      const dataToAppend = {
+        type: element.type,
+        value: element.value instanceof File ? undefined : element.value,
+        order: element.order, 
+      };
+  
       if (element.type === 'photo' || element.type === 'vidéo') {
-        formData.append(`file-${index}`, element.value as File);
-        console.log(`Appending file: ${element.value}`)
+        if (element.value instanceof File) {
+          formData.append(`file-${index}`, element.value); 
+        } else {
+          console.error(`Erreur: le fichier pour ${element.type} n'est pas valide`, element);
+        }
       } else {
-        formData.append(`content-${index}`, JSON.stringify({ type: element.type, value: element.value }));
-        console.log(`Appending content: ${element.type} - ${element.value}`);
+        formData.append(`content-${index}`, JSON.stringify(dataToAppend));
       }
+      console.log('Données ajoutées au FormData:', dataToAppend);
     });
-
+  
     try {
-      
       const response = await createArticle(formData);
-      console.log('Response from createArticle:', response);
-
       if (response.success) {
-        console.log('Article saved:', response.article);
         router.push('/admin/page-admin');
       } else {
-        console.error('Failed to save article:', response.error);
         setError(response.error || 'Failed to save article');
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
       setError('An unexpected error occurred');
     }
   };
   
 
+  // Génération du slug automatiquement
   const generateSlug = (title: string): string => {
     return title
       .toLowerCase()
@@ -114,21 +128,32 @@ const CreateArticle: React.FC = () => {
       .replace(/-+/g, '-');
   };
 
+  // Ajout d'un nouvel élément avec un ordre basé sur la longueur actuelle du tableau content
   const addElement = (type: 'text' | 'vidéo' | 'photo' | 'link' | 'h2') => {
-    setContent([...content, { type, id: Date.now() }]);
+    setContent([
+      ...content,
+      { type, id: Date.now(), order: content.length } // Ajout du champ order
+    ]);
     setIsModalOpen(false);
   };
 
+  // Suppression d'un élément, et réajustement de l'ordre des éléments
   const removeElement = (id: number) => {
-    setContent(content.filter(element => element.id !== id));
+    const updatedContent = content.filter(element => element.id !== id);
+    const reorderedContent = updatedContent.map((el, index) => ({ ...el, order: index })); // Réajustement des ordres après suppression
+    setContent(reorderedContent);
   };
 
+  // Gestion du changement de contenu
   const handleElementChange = (id: number, value: string | File) => {
     const updatedContent = content.map(element =>
       element.id === id ? { ...element, value } : element
     );
     setContent(updatedContent);
   };
+
+  // Tri des éléments avant de les afficher pour garantir l'ordre de création
+  const sortedContent = [...content].sort((a, b) => a.order - b.order);
 
   return (
     <div className="max-w-4xl mx-auto mt-10 p-4 mb-10 bg-white rounded shadow mt-[166.88px] md:mt-[122.88px] lg:mt-[78.88px]">
@@ -158,8 +183,10 @@ const CreateArticle: React.FC = () => {
         </div>
 
         <div className="space-y-4">
+          {/* Premier élément, la photo de couverture */}
           <PhotoZone key={content[0].id} onChange={(value) => handleElementChange(content[0].id, value)} title="Photo de couverture :" onRemove={() => {}} showRemoveButton={false} />
-          {content.slice(1).map((element) => {
+          {/* Rendu des autres éléments dans l'ordre défini */}
+          {sortedContent.slice(1).map((element) => {
             if (element.type === 'text') {
               return <TextZone key={element.id} onChange={(value) => handleElementChange(element.id, value)} onRemove={() => removeElement(element.id)} />;
             }

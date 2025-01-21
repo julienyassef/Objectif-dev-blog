@@ -9,6 +9,7 @@ import { compressFile, uploadFileToStorage } from '@/utils/fileHandlers';
 type ContentElement = {
   type: 'vidéo' | 'photo' | 'text' | 'link' | 'h2';
   value: string;
+  order: number;
 };
 
 const toPlainObject = (doc: any) => {
@@ -23,66 +24,66 @@ const toPlainObject = (doc: any) => {
 };
 
 export const createArticle = async (formData: FormData) => {
-  // console.log("Connecting to database...");
   await dbConnect();
+  console.log('Début de la fonction createArticle'); // Vérifiez que la fonction démarre
+
   try {
-    // Extraction des données du formulaire
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
     const author = formData.get('author') as string;
     const tags = (formData.get('tags') as string)?.split(',').map(tag => tag.trim());
 
-    // console.log("Title:", title);
-    // console.log("Slug:", slug);
-    // console.log("Author:", author);
-    // console.log("Tags:", tags);
+    console.log('FormData reçu :', { title, slug, author, tags });
 
-    // Initialisation du tableau de contenu
     const content: ContentElement[] = [];
+    let order = 0;
 
-    // console.log("Processing form data...");
+    // Vérifiez les entrées de formData
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith('file-')) {  // Si le champ du formulaire est un fichier
+      console.log('Traitement du FormData - Clé:', key, 'Valeur:', value);
+
+      if (key.startsWith('file-')) {  
         const file = value as File;
         const buffer = Buffer.from(await file.arrayBuffer());
+
         try {
-          // console.log("Processing file:", file.name, "of type:", file.type);
+          console.log('Traitement du fichier :', file.name);
           const compressedFile = await compressFile(buffer, file.type);
           const fileUrl = await uploadFileToStorage(compressedFile, file.name, file.type);
 
-          // Vérifiez si le fichier a été correctement téléchargé
           if (!fileUrl) {
-            console.error('Error: file URL is undefined after upload');
+            console.error('Erreur : file URL non défini après téléchargement');
             continue;
           }
 
-          // Ajout du fichier compressé et téléchargé au contenu
           const fileType = file.type.startsWith('video/') ? 'vidéo' : 'photo';
-          content.push({ type: fileType, value: fileUrl });
-          // console.log("File processed and uploaded:", fileUrl);
+          content.push({ type: fileType, value: fileUrl, order });
+          order++;
+          console.log('Fichier ajouté à content:', { fileType, fileUrl, order });
         } catch (error) {
-          // console.error('Error processing file:', file.name, error);
+          console.error('Erreur lors du traitement du fichier:', file.name, error);
           throw error;
         }
-      } else if (key.startsWith('content-')) {  // Si le champ du formulaire est un contenu texte
+      } else if (key.startsWith('content-')) {  
         const element = JSON.parse(value as string);
-        // Vérification que le type de l'élément est valide
+        console.log('Élément de contenu reçu:', element);
+
         if (['vidéo', 'photo', 'text', 'link', 'h2'].includes(element.type)) {
-          content.push(element as ContentElement);
+          content.push({ ...element, order });
+          order++;
+          console.log('Élément ajouté à content:', { ...element, order });
         }
       }
     }
 
-    // console.log("Final content array:", content);
+    console.log('Contenu à sauvegarder dans MongoDB:', content);
 
-    // Vérification de l'existence d'un article avec le même slug
     const existingArticle = await ArticleModel.findOne({ slug });
     if (existingArticle) {
-      console.log("Article with slug already exists");
+      console.log('Un article avec ce slug existe déjà.');
       return { success: false, error: 'Un article avec ce slug existe déjà, changer de slug' };
     }
 
-    // Création du nouvel article
     const newArticle = new ArticleModel({
       title,
       slug,
@@ -94,21 +95,24 @@ export const createArticle = async (formData: FormData) => {
       likesByIp: [],
     });
 
-    // Sauvegarde du nouvel article dans la base de données
+    console.log('Article en cours de sauvegarde dans MongoDB');
     const savedArticle = await newArticle.save();
-    const plainArticle = toPlainObject(savedArticle.toObject());
+    console.log('Article sauvegardé dans MongoDB:', savedArticle);
 
-    // console.log('Article successfully created:', plainArticle);
+    const plainArticle = toPlainObject(savedArticle.toObject());
+    console.log('Article transformé en objet brut:', plainArticle);
 
     return { success: true, article: plainArticle };
 
   } catch (error) {
-    console.error('Error creating article:', error);
+    console.error('Erreur lors de la création de l\'article:', error);
     return { success: false, error: 'Failed to create article' };
   }
 };
 
-// Les autres fonctions restent inchangées
+
+
+
 export const getAllArticles = async () => {
   await dbConnect();
   try {
@@ -125,6 +129,8 @@ export const getArticle = async (slug: string) => {
   try {
     const article = await ArticleModel.findOne({ slug }).lean();
     if (article) {
+      // Trie le contenu par le champ `order`
+      article.content.sort((a, b) => a.order - b.order);
       return { success: true, article: toPlainObject(article) };
     } else {
       return { success: false, error: 'Article not found' };
@@ -134,6 +140,7 @@ export const getArticle = async (slug: string) => {
     return { success: false, error: 'Failed to get article' };
   }
 };
+
 
 export const toggleLike = async (slug: string, userId: string, like: boolean) => {
   await dbConnect();

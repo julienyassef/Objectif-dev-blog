@@ -16,7 +16,7 @@ import TagsProvider from "@/providers/TagsProvider";
 import AuthorsProvider from "@/providers/AuthorsProvider";
 
 export const metadata: Metadata = {
-  title: "Objectif Dev Blog",
+  title: "Blog pour développeur: articles, astuces et conseils.",
   description: "Découvrez des articles et conseils pratiques sur le développement web, partagés par un développeur passionné. Suivez mon parcours et mes expériences !",
 };
 
