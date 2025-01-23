@@ -1,5 +1,4 @@
 "use server";
-
 import fs from 'fs';
 import path from 'path';
 import dbConnect from '@/utils/dbConnect';
@@ -42,7 +41,7 @@ export const createArticle = async (formData: FormData) => {
     for (const [key, value] of formData.entries()) {
       console.log('Traitement du FormData - Clé:', key, 'Valeur:', value);
 
-      if (key.startsWith('file-')) {  
+      if (key.startsWith('file-')) {
         const file = value as File;
         const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -57,25 +56,27 @@ export const createArticle = async (formData: FormData) => {
           }
 
           const fileType = file.type.startsWith('video/') ? 'vidéo' : 'photo';
+          const order = content.length; // Utilisez l'ordre fourni
           content.push({ type: fileType, value: fileUrl, order });
-          order++;
+
           console.log('Fichier ajouté à content:', { fileType, fileUrl, order });
         } catch (error) {
           console.error('Erreur lors du traitement du fichier:', file.name, error);
           throw error;
         }
-      } else if (key.startsWith('content-')) {  
+      } else if (key.startsWith('content-')) {
         const element = JSON.parse(value as string);
         console.log('Élément de contenu reçu:', element);
 
         if (['vidéo', 'photo', 'text', 'link', 'h2'].includes(element.type)) {
-          content.push({ ...element, order });
-          order++;
-          console.log('Élément ajouté à content:', { ...element, order });
+          content.push(element); // Utilisez l'ordre fourni
+          console.log('Élément ajouté à content:', { element});
         }
       }
     }
 
+    // Triez le contenu par l'ordre avant de le sauvegarder
+    content.sort((a, b) => a.order - b.order);
     console.log('Contenu à sauvegarder dans MongoDB:', content);
 
     const existingArticle = await ArticleModel.findOne({ slug });
@@ -110,9 +111,6 @@ export const createArticle = async (formData: FormData) => {
   }
 };
 
-
-
-
 export const getAllArticles = async () => {
   await dbConnect();
   try {
@@ -141,7 +139,6 @@ export const getArticle = async (slug: string) => {
   }
 };
 
-
 export const toggleLike = async (slug: string, userId: string, like: boolean) => {
   await dbConnect();
 
@@ -168,7 +165,6 @@ export const toggleLike = async (slug: string, userId: string, like: boolean) =>
     return { success: false, error: 'Failed to toggle like' };
   }
 };
-
 
 export const incrementViews = async (slug: string) => {
   await dbConnect();

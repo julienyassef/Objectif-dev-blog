@@ -7,6 +7,7 @@ import Image from 'next/image';
 interface ContentElementType {
   type: string;
   value: string;
+  order: number; // Ajoutez l'ordre ici
 }
 
 interface ArticlePageComponentProps {
@@ -47,16 +48,20 @@ const ContentElement: React.FC<{ element: ContentElementType }> = ({ element }) 
   }
 };
 
-
-
 const ArticlePageComponent: React.FC<ArticlePageComponentProps> = ({ article }) => {
+  // Triez les éléments de contenu par l'ordre
+  const sortedContent = article.content.sort((a, b) => a.order - b.order);
+
   // Trouver la première photo et l'exclure des autres éléments
-  const otherElements = article.content.filter((element, index) => element.type !== 'photo' || index !== article.content.findIndex((el) => el.type === 'photo'));
+  const firstPhotoIndex = sortedContent.findIndex(element => element.type === 'photo');
+  const firstPhoto = firstPhotoIndex !== -1 ? sortedContent[firstPhotoIndex] : null;
+  const otherElements = sortedContent.filter((_, index) => index !== firstPhotoIndex);
 
   return (
     <div className="container mx-auto pl-6 pr-6 mb-14">
-      {otherElements.map((element, index) => (
-        <ContentElement key={index} element={element} />
+      {firstPhoto && <ContentElement key={firstPhoto.order} element={firstPhoto} />}
+      {otherElements.map((element) => (
+        <ContentElement key={element.order} element={element} />
       ))}
     </div>
   );
